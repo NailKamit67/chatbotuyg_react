@@ -4,9 +4,7 @@ import LoadFile from './LoadFile';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Container, Row, Col } from 'react-bootstrap';
 import Chat from './Chat';
-import * as qna from "@tensorflow-models/qna";
-import * as tf from '@tensorflow/tfjs';
-import * as use from '@tensorflow-models/universal-sentence-encoder';
+import axios from 'axios';
 
 function App() {
 
@@ -15,7 +13,6 @@ function App() {
     time: new Date().toLocaleString(),
     from: "chatbot"
   }])
-  const [model, setModel] = useState();
   const [modelUse, setModelUse] = useState();
   const [loading, setLoading] = useState(false);
   const [isLoadFile, setIsLoadFile] = useState(false);
@@ -24,39 +21,8 @@ function App() {
 
   useEffect(() => {
     setLoading(true);
-    setModelState(qna);
 
   }, [])
-
-  async function setModelState(lib) {
-    const model = await lib.load();
-    setModel(model);
-    const modelUse = await use.load();
-    setModelUse(modelUse);
-    setLoading(false);
-  }
-
-  // async function questionAnswering(userQuestion) {
-
-  //   const qaData = [
-  //     { question: "soru", answer: "cevap" },
-  //   ];
-  //   var questionEmbeddings;
-  //   use.load().then(model => {
-  //     const sentences = [
-  //       'Hello.',
-  //       'How are you?'
-  //     ];
-  //     model.embed(sentences).then(async embeddings => {
-
-  //       questionEmbeddings = embeddings;
-  //       const similarities = await tf.losses.cosineDistance(embeddings, qaEmbeddings).data();
-  //       const maxSimilarityIndex = similarities.indexOf(Math.max(...similarities));
-  //       console.log(maxSimilarityIndex);
-  //     });
-  //   });
-
-  // }
 
   function saveText(input) {
     if (input) {
@@ -74,27 +40,20 @@ function App() {
     const mesHuman = [...messages, newMessageHuman]
     setMessages(mesHuman);
     setIsTyping(true);
-    const answers = await model.findAnswers(message, inputValue);
-    // questionAnswering(message);
-    if (answers.length > 0) {
+    // const answers = await model.findAnswers(message, inputValue);
+    const bodyFormData = new FormData();
+    bodyFormData.append('question', message);
+    bodyFormData.append('context', inputValue);
+    axios.post('http://127.0.0.1:5000/chatbot',bodyFormData).then((response) => {
       const newMessageChatbot = {
-        text: answers[0].text,
+        text: response.data?.answer || "Üzgünüm :( Bu soruna cevap veremiyorum.",
         time: new Date().toLocaleString(),
         from: "chatbot"
       }
       const mesEnd = [...mesHuman, newMessageChatbot];
       setMessages(mesEnd);
       setIsTyping(false);
-    } else {
-      const newMessageChatbot = {
-        text: "Üzgünüm :( Bu soruna cevap veremiyorum.",
-        time: new Date().toLocaleString(),
-        from: "chatbot"
-      }
-      const mesEnd = [...mesHuman, newMessageChatbot];
-      setMessages(mesEnd);
-      setIsTyping(false);
-    }
+    })
 
   }
 
@@ -106,9 +65,7 @@ function App() {
             {
               !isLoadFile ?
                 <LoadFile saveText={saveText} /> :
-                loading ?
-                  <p> Lütfen Bekleyiniz.. <br/> Bir kaç dakika sürebilir...</p> :
-                  <Chat messages={messages} addChat={addChat} />
+                <Chat messages={messages} addChat={addChat} />
             }
           </Col>
         </Row>
